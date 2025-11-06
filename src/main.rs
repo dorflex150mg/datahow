@@ -1,4 +1,4 @@
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use log::info;
 use probabilistic_collections::hyperloglog::HyperLogLog;
 use serde::Deserialize;
@@ -30,6 +30,13 @@ async fn receive_log(data: web::Data<Arc<AppState>>, body: web::Json<LogEntry>) 
     HttpResponse::Accepted().finish()
 }
 
+#[get("/metrics")]
+async fn metrics(data: web::Data<Arc<AppState>>) -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
+        "unique_ip_estimate": data.hll.lock().unwrap().len()
+    }))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
@@ -39,17 +46,28 @@ async fn main() -> std::io::Result<()> {
         hll: Mutex::new(hll),
     });
     let state_for_logs = state.clone();
+    let state_for_metrics = state.clone();
 
-    HttpServer::new(move || {
+    let logs_server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(state_for_logs.clone()))
             .service(receive_log)
     })
     .workers(num_cpus::get()) // The point of having 2 servers is to give more resources to log ingestion.
     .bind(("0.0.0.0", 5000))?
-    .run()
-    .await
-    .unwrap();
+    .run();
+
+    // Server for metrics on port 9102
+    let metrics_server = HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(state_for_metrics.clone()))
+            .service(metrics)
+    })
+    .workers(1)
+    .bind(("0.0.0.0", 9102))?
+    .run();
+
+    tokio::try_join!(logs_server, metrics_server)?;
 
     info!("Servers starting: logs on :5000, metrics on :9102");
 
