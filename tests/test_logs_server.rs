@@ -57,6 +57,7 @@ mod tests {
             .find(|l| l.starts_with("unique_ip_addresses"))
             .unwrap();
         let value: f64 = line.split_whitespace().nth(1).unwrap().parse().unwrap();
+        println!("Unique IP estimate: {}", value);
         assert!(value > 9.0);
         assert!(value < 11.0);
     }
