@@ -38,15 +38,26 @@ mod tests {
             .get("http://127.0.0.1:9102/metrics")
             .send()
             .await
-            .expect("Request failed");
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
 
-        assert!(resp.status().is_success());
+        //assert!(resp.status().is_success());
 
-        let json: Value = resp.json().await.expect("Invalid JSON");
+        //let json: Value = resp.json().await.expect("Invalid JSON");
 
-        // Ensure the JSON has the expected key
-        assert!(json.get("unique_ip_estimate").is_some());
-        assert!(json["unique_ip_estimate"].as_f64().unwrap() > 9.0);
-        assert!(json["unique_ip_estimate"].as_f64().unwrap() < 11.0);
+        //// Ensure the JSON has the expected key
+        //assert!(json.get("unique_ip_estimate").is_some());
+        //assert!(json["unique_ip_estimate"].as_f64().unwrap() > 9.0);
+        //assert!(json["unique_ip_estimate"].as_f64().unwrap() < 11.0);
+        // find the gauge line
+        let line = resp
+            .lines()
+            .find(|l| l.starts_with("unique_ip_addresses"))
+            .unwrap();
+        let value: f64 = line.split_whitespace().nth(1).unwrap().parse().unwrap();
+        assert!(value > 9.0);
+        assert!(value < 11.0);
     }
 }
