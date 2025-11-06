@@ -34,7 +34,7 @@ async fn receive_log(data: web::Data<Arc<AppState>>, body: web::Json<LogEntry>) 
 async fn main() -> std::io::Result<()> {
     env_logger::init();
 
-    let hll = HyperLogLog::new(0.001); // 1% error rate
+    let hll = HyperLogLog::new(0.001); // 0.1% error rate
     let state = Arc::new(AppState {
         hll: Mutex::new(hll),
     });
