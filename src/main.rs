@@ -25,10 +25,6 @@ async fn receive_log(data: web::Data<Arc<AppState>>, body: web::Json<LogEntry>) 
         hll.insert(&body.ip);
         let estimate = hll.len();
         data.gauge.set(estimate);
-        println!(
-            "Received log from IP: {}, estimated unique IPs: {}",
-            body.ip, estimate
-        );
     }
     HttpResponse::Accepted().finish()
 }
@@ -38,9 +34,7 @@ async fn metrics(data: web::Data<Arc<AppState>>) -> impl Responder {
     let mut buffer = Vec::new();
     let encoder = TextEncoder::new();
     let metric_families = data.registry.gather();
-    println!("Gathered {:?} metric families", metric_families);
     encoder.encode(&metric_families, &mut buffer).unwrap();
-    println!("Metrics: {}", String::from_utf8_lossy(&buffer));
     HttpResponse::Ok()
         .content_type(encoder.format_type())
         .body(buffer)
